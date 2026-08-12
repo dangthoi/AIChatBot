@@ -2,14 +2,33 @@ import logging
 import requests
 import json
 import re
+import os
+from threading import Thread
+from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
 # ==========================================================
-# ⚙️ CẤU HÌNH KEY CỦA BÁC
+# 🌐 GIỮ PORT ĐỂ RENDER WEB SERVICE KHÔNG BỊ DISCONNECT
 # ==========================================================
-TELEGRAM_BOT_TOKEN = "8710398772:AAGMzDrXh1ZH5FjjTUy9gSPtBm52zyYFcug"
-GEMINI_API_KEY = "AIzaSyDKAw4wp3HXJa8Q6TW4tyFfuK1AghC4ziY"
+web_app = Flask('')
+
+@web_app.route('/')
+def home():
+    return "DVTShop Bot is running 24/7!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    web_app.run(host='0.0.0.0', port=port)
+
+# Khởi chạy Web Server ở luồng phụ
+Thread(target=run_web, daemon=True).start()
+
+# ==========================================================
+# ⚙️ CẤU HÌNH KEY (LẤY TỪ BIẾN MÔI TRƯỜNG VÀ DỰ PHÒNG)
+# ==========================================================
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8710398772:AAGMzDrXh1ZH5FjjTUy9gSPtBm52zyYFcug")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDKAw4wp3HXJa8Q6TW4tyFfuK1AghC4ziY")
 
 # 🧠 NẠP KIẾN THỨC VÀ TÍNH CÁCH CHO BOT DVT SHOP
 SYSTEM_PROMPT = """
@@ -32,21 +51,15 @@ WORKING_MODEL = None
 
 def clean_ai_response(text):
     """Hàm dọn sạch 100% dàn ý, suy nghĩ, prompt nháp của AI"""
-    # 1. Nếu có thẻ <thought>...</thought> thì xóa sạch
     text = re.sub(r'<thought>.*?</thought>', '', text, flags=re.DOTALL)
     
-    # 2. Nếu AI in ra dàn ý dạng "User Input:", "Persona:", "Goal:", "Draft:", "Steps:"...
-    # Cắt lấy đúng đoạn văn bản nằm sau cùng (thường nằm sau dấu ngoặc kép hoặc dòng trắng)
     if "User Input:" in text or "Persona:" in text or "Greeting:" in text:
-        # Tìm câu trả lời trong ngoặc kép ở cuối đoạn text
         matches = re.findall(r'"([^"]*)"', text, flags=re.DOTALL)
         if matches:
-            # Lấy đoạn văn bản dài nhất trong ngoặc kép (đó chính là câu trả lời thật)
             longest_match = max(matches, key=len)
             if len(longest_match) > 20:
                 return longest_match.strip()
         
-        # Nếu không có ngoặc kép, tách theo dòng và bỏ các dòng chứa từ khóa lập dàn ý
         lines = text.strip().split('\n')
         clean_lines = [
             l for l in lines 
@@ -115,7 +128,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 if __name__ == "__main__":
     print("==========================================")
-    print("   BOT AI DVT SHOP ĐÃ BẬT - SẴN SÀNG!    ")
+    print("    BOT AI DVT SHOP ĐÃ BẬT - SẴN SÀNG!    ")
     print("==========================================")
     
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
