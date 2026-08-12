@@ -28,7 +28,7 @@ Thread(target=run_web, daemon=True).start()
 # ⚙️ CẤU HÌNH KEY (LẤY TỪ BIẾN MÔI TRƯỜNG VÀ DỰ PHÒNG)
 # ==========================================================
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8710398772:AAGMzDrXh1ZH5FjjTUy9gSPtBm52zyYFcug")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDKAw4wp3HXJa8Q6TW4tyFfuK1AghC4ziY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6IbRlYlKj2U2wzdfvwMjUbRkFMEZEL5ySn5D9x0nlUlUw")
 
 # 🧠 NẠP KIẾN THỨC VÀ TÍNH CÁCH CHO BOT DVT SHOP
 SYSTEM_PROMPT = """
