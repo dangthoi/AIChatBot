@@ -24,7 +24,7 @@ Thread(target=run_web, daemon=True).start()
 # ==========================================================
 # ⚙️ CẤU HÌNH KEY & GEMINI SDK
 # ==========================================================
-TELEGRAM_BOT_TOKEN = "8710398772:AAGMzDrXh1ZH5FjjTUy9gSPtBm52zyYFcug"
+TELEGRAM_BOT_TOKEN = "8710398772:AAHAcqcxjkzlJVlv4enzxD5r9rmc-TrM3hk"
 GEMINI_API_KEY = "AQ.Ab8RN6LsUpjnrZxkTRZQlzeInRbUL6X_4cQ45qZzfgsH-6u7EA"  # Thay key mới nếu key này bị sập
 
 # Khởi tạo SDK chính thức của Google
