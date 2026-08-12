@@ -47,12 +47,14 @@ def clean_ai_response(text):
 
 def call_gemini_api(user_message):
     headers = {'Content-Type': 'application/json'}
+    
+    # Ghép Prompt trực tiếp vào nội dung để tránh lỗi cấu trúc payload
+    full_prompt = f"{SYSTEM_PROMPT}\n\nKhách hàng hỏi: {user_message}"
+    
     payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-        "contents": [{"parts": [{"text": user_message}]}]
+        "contents": [{"parts": [{"text": full_prompt}]}]
     }
 
-    # URL chính xác 100% không bao giờ bị lỗi 404 NotFound
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     response = requests.post(url, headers=headers, json=payload, timeout=20)
@@ -62,8 +64,9 @@ def call_gemini_api(user_message):
         raw_reply = data['candidates'][0]['content']['parts'][0]['text']
         return clean_ai_response(raw_reply)
     else:
-        print(f"[ERROR API GOOGLE] {response.status_code} - {response.text}")
-        raise Exception(f"Lỗi API: {response.status_code}")
+        # In chi tiết nội dung lỗi ra Log của Render để kiểm tra
+        print(f"[ERR GOOGLE CODE {response.status_code}]: {response.text}")
+        raise Exception(f"Lỗi API Google Code {response.status_code}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
