@@ -70,48 +70,22 @@ def clean_ai_response(text):
     return text
 
 def call_gemini_api(user_message):
-    global WORKING_MODEL
     headers = {'Content-Type': 'application/json'}
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": [{"parts": [{"text": user_message}]}]
     }
 
-    if WORKING_MODEL:
-        url = f"https://generativelanguage.googleapis.com/v1beta/{WORKING_MODEL}:generateContent?key={GEMINI_API_KEY}"
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            raw_reply = data['candidates'][0]['content']['parts'][0]['text']
-            return clean_ai_response(raw_reply)
-        else:
-            WORKING_MODEL = None
-
-    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
-    res = requests.get(list_url, timeout=15)
+    # Dùng trực tiếp gemini-1.5-flash vừa nhanh vừa miễn phí
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
-    if res.status_code != 200:
-        raise Exception(f"Lỗi lấy danh sách Model (HTTP {res.status_code}): {res.text}")
-        
-    models_data = res.json().get('models', [])
-    
-    for m in models_data:
-        if 'generateContent' in m.get('supportedGenerationMethods', []):
-            model_name = m['name']
-            url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={GEMINI_API_KEY}"
-            
-            try:
-                response = requests.post(url, headers=headers, json=payload, timeout=30)
-                if response.status_code == 200:
-                    data = response.json()
-                    WORKING_MODEL = model_name
-                    print(f"[SUCCESS] Đã kết nối qua Model: {model_name}")
-                    raw_reply = data['candidates'][0]['content']['parts'][0]['text']
-                    return clean_ai_response(raw_reply)
-            except Exception:
-                continue
-                
-    raise Exception("Không tìm thấy Model nào phản hồi!")
+    response = requests.post(url, headers=headers, json=payload, timeout=15)
+    if response.status_code == 200:
+        data = response.json()
+        raw_reply = data['candidates'][0]['content']['parts'][0]['text']
+        return clean_ai_response(raw_reply)
+    else:
+        raise Exception(f"Lỗi API Gemini ({response.status_code}): {response.text}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
