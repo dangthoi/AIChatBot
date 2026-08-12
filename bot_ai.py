@@ -1,8 +1,6 @@
-import logging
-import requests
-import json
-import re
 import os
+import re
+import requests
 from threading import Thread
 from flask import Flask
 from telegram import Update
@@ -21,19 +19,15 @@ def run_web():
     port = int(os.environ.get("PORT", 10000))
     web_app.run(host='0.0.0.0', port=port)
 
-# Khởi chạy Web Server ở luồng phụ
 Thread(target=run_web, daemon=True).start()
 
 # ==========================================================
-# ⚙️ CẤU HÌNH KEY (LẤY TỪ BIẾN MÔI TRƯỜNG VÀ DỰ PHÒNG)
+# ⚙️ CẤU HÌNH KEY (DÁN API KEY MỚI VÀO ĐÂY)
 # ==========================================================
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8710398772:AAGMzDrXh1ZH5FjjTUy9gSPtBm52zyYFcug")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6IbRlYlKj2U2wzdfvwMjUbRkFMEZEL5ySn5D9x0nlUlUw")
+TELEGRAM_BOT_TOKEN = "8710398772:AAGMzDrXh1ZH5FjjTUy9gSPtBm52zyYFcug"
+GEMINI_API_KEY = "AQ.Ab8RN6IsKEuJs9km40SKMFTxPAG26hYEbvCyU_pjCKexC28XaQ"
 
-# 🧠 NẠP KIẾN THỨC VÀ TÍNH CÁCH CHO BOT DVT SHOP
 SYSTEM_PROMPT = """
-[STRICT INSTRUCTION: RESPOND ONLY WITH THE FINAL REPLY. DO NOT INCLUDE THINKING, DRAFTS, OUTLINES, OR NOTES.]
-
 Bạn là Trợ lý AI bán hàng và hỗ trợ kỹ thuật thông minh của cửa hàng DVTShop (DVT Shop HCM).
 Phong cách giao tiếp: Thân thiện, vui vẻ, lịch sự, am hiểu kỹ thuật TV Box và thiết bị điện tử.
 
@@ -44,30 +38,12 @@ Thông tin cửa hàng & Sản phẩm DVTShop:
 - Khi khách hỏi mua hàng hoặc hỏi địa chỉ: Hãy chào hỏi nồng nhiệt, báo giá tham khảo và mời khách nhắn Zalo hoặc để lại SĐT để shop lên đơn.
 - Khi khách báo lỗi kỹ thuật (Box bị treo, mất app, lỗi mạng): Hãy hướng dẫn kiểm tra dây nguồn, cắm lại dây LAN/Wifi, khởi động lại Box hoặc gửi Android ID cho shop check.
 
-BẮT BỘC: Chỉ xuất ra duy nhất câu trả lời cuối cùng gửi cho khách hàng. Không phân tích, không lập dàn ý tiếng Anh hay tiếng Việt.
+BẮT BỘC: Chỉ xuất ra duy nhất câu trả lời cuối cùng gửi cho khách hàng. Không phân tích, không lập dàn ý.
 """
 
-WORKING_MODEL = None
-
 def clean_ai_response(text):
-    """Hàm dọn sạch 100% dàn ý, suy nghĩ, prompt nháp của AI"""
     text = re.sub(r'<thought>.*?</thought>', '', text, flags=re.DOTALL)
-    
-    if "User Input:" in text or "Persona:" in text or "Greeting:" in text:
-        matches = re.findall(r'"([^"]*)"', text, flags=re.DOTALL)
-        if matches:
-            longest_match = max(matches, key=len)
-            if len(longest_match) > 20:
-                return longest_match.strip()
-        
-        lines = text.strip().split('\n')
-        clean_lines = [
-            l for l in lines 
-            if not any(k in l for k in ['User Input:', 'Persona:', 'Tone:', 'Key Info:', 'Goal:', 'Introduction:', 'Capability:', 'Respond only', 'Include thinking', 'Draft', 'Greeting'])
-        ]
-        text = '\n'.join(clean_lines).strip()
-        
-    return text
+    return text.strip()
 
 def call_gemini_api(user_message):
     headers = {'Content-Type': 'application/json'}
@@ -76,24 +52,18 @@ def call_gemini_api(user_message):
         "contents": [{"parts": [{"text": user_message}]}]
     }
 
-    # Gọi trực tiếp model gemini-1.5-flash
+    # Dùng v1beta endpoint với gemini-1.5-flash
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=20)
-        
-        if response.status_code == 200:
-            data = response.json()
-            raw_reply = data['candidates'][0]['content']['parts'][0]['text']
-            return clean_ai_response(raw_reply)
-        else:
-            # In lỗi chi tiết từ Google ra log trên Render
-            print(f"[ERR API] Code {response.status_code}: {response.text}")
-            raise Exception(f"Lỗi API Google: {response.status_code}")
-            
-    except Exception as e:
-        print(f"[ERR GEMINI]: {str(e)}")
-        raise e
+    response = requests.post(url, headers=headers, json=payload, timeout=20)
+    
+    if response.status_code == 200:
+        data = response.json()
+        raw_reply = data['candidates'][0]['content']['parts'][0]['text']
+        return clean_ai_response(raw_reply)
+    else:
+        print(f"[ERROR API GOOGLE] {response.status_code} - {response.text}")
+        raise Exception(f"Lỗi API: {response.status_code}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
@@ -105,15 +75,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bot_reply = call_gemini_api(user_text)
         await update.message.reply_text(bot_reply)
     except Exception as e:
-        print(f"[-] Lỗi AI Chi Tiết: {str(e)}")
+        print(f"[-] Lỗi AI: {str(e)}")
         await update.message.reply_text("Shop đang bận một chút, bác vui lòng nhắn Zalo 0968.862.84 để được hỗ trợ ngay nhé!")
 
 if __name__ == "__main__":
-    print("==========================================")
-    print("    BOT AI DVT SHOP ĐÃ BẬT - SẴN SÀNG!    ")
-    print("==========================================")
-    
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    app.run_polling()
     app.run_polling(drop_pending_updates=True)
