@@ -76,16 +76,24 @@ def call_gemini_api(user_message):
         "contents": [{"parts": [{"text": user_message}]}]
     }
 
-    # Dùng trực tiếp gemini-1.5-flash vừa nhanh vừa miễn phí
+    # Gọi trực tiếp model gemini-1.5-flash
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
-    response = requests.post(url, headers=headers, json=payload, timeout=15)
-    if response.status_code == 200:
-        data = response.json()
-        raw_reply = data['candidates'][0]['content']['parts'][0]['text']
-        return clean_ai_response(raw_reply)
-    else:
-        raise Exception(f"Lỗi API Gemini ({response.status_code}): {response.text}")
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=20)
+        
+        if response.status_code == 200:
+            data = response.json()
+            raw_reply = data['candidates'][0]['content']['parts'][0]['text']
+            return clean_ai_response(raw_reply)
+        else:
+            # In lỗi chi tiết từ Google ra log trên Render
+            print(f"[ERR API] Code {response.status_code}: {response.text}")
+            raise Exception(f"Lỗi API Google: {response.status_code}")
+            
+    except Exception as e:
+        print(f"[ERR GEMINI]: {str(e)}")
+        raise e
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
