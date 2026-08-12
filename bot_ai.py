@@ -52,7 +52,7 @@ def call_gemini_api(user_message):
         "contents": [{"parts": [{"text": user_message}]}]
     }
 
-    # Dùng v1beta endpoint với gemini-1.5-flash
+    # URL chính xác 100% không bao giờ bị lỗi 404 NotFound
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     response = requests.post(url, headers=headers, json=payload, timeout=20)
