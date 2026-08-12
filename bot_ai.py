@@ -1,13 +1,13 @@
 import os
 import re
-import requests
 from threading import Thread
 from flask import Flask
+import google.generativeai as genai
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
 # ==========================================================
-# 🌐 GIỮ PORT ĐỂ RENDER WEB SERVICE KHÔNG BỊ DISCONNECT
+# 🌐 GIỮ PORT CHO RENDER WEB SERVICE
 # ==========================================================
 web_app = Flask('')
 
@@ -22,10 +22,13 @@ def run_web():
 Thread(target=run_web, daemon=True).start()
 
 # ==========================================================
-# ⚙️ CẤU HÌNH KEY (DÁN API KEY MỚI VÀO ĐÂY)
+# ⚙️ CẤU HÌNH KEY & GEMINI SDK
 # ==========================================================
 TELEGRAM_BOT_TOKEN = "8710398772:AAGMzDrXh1ZH5FjjTUy9gSPtBm52zyYFcug"
-GEMINI_API_KEY = "AQ.Ab8RN6LsUpjnrZxkTRZQlzeInRbUL6X_4cQ45qZzfgsH-6u7EA"
+GEMINI_API_KEY = "AQ.Ab8RN6LsUpjnrZxkTRZQlzeInRbUL6X_4cQ45qZzfgsH-6u7EA"  # Thay key mới nếu key này bị sập
+
+# Khởi tạo SDK chính thức của Google
+genai.configure(api_key=GEMINI_API_KEY)
 
 SYSTEM_PROMPT = """
 Bạn là Trợ lý AI bán hàng và hỗ trợ kỹ thuật thông minh của cửa hàng DVTShop (DVT Shop HCM).
@@ -41,32 +44,15 @@ Thông tin cửa hàng & Sản phẩm DVTShop:
 BẮT BỘC: Chỉ xuất ra duy nhất câu trả lời cuối cùng gửi cho khách hàng. Không phân tích, không lập dàn ý.
 """
 
+# Khởi tạo model chuẩn gemini-1.5-flash
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    system_instruction=SYSTEM_PROMPT
+)
+
 def clean_ai_response(text):
     text = re.sub(r'<thought>.*?</thought>', '', text, flags=re.DOTALL)
     return text.strip()
-
-def call_gemini_api(user_message):
-    headers = {'Content-Type': 'application/json'}
-    
-    # Ghép Prompt trực tiếp vào nội dung để tránh lỗi cấu trúc payload
-    full_prompt = f"{SYSTEM_PROMPT}\n\nKhách hàng hỏi: {user_message}"
-    
-    payload = {
-        "contents": [{"parts": [{"text": full_prompt}]}]
-    }
-
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    
-    response = requests.post(url, headers=headers, json=payload, timeout=20)
-    
-    if response.status_code == 200:
-        data = response.json()
-        raw_reply = data['candidates'][0]['content']['parts'][0]['text']
-        return clean_ai_response(raw_reply)
-    else:
-        # In chi tiết nội dung lỗi ra Log của Render để kiểm tra
-        print(f"[ERR GOOGLE CODE {response.status_code}]: {response.text}")
-        raise Exception(f"Lỗi API Google Code {response.status_code}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
@@ -75,13 +61,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[+] Chat từ [{user_name}]: {user_text}")
 
     try:
-        bot_reply = call_gemini_api(user_text)
+        # Gọi Gemini qua SDK chính thức
+        response = model.generate_content(user_text)
+        bot_reply = clean_ai_response(response.text)
         await update.message.reply_text(bot_reply)
+        
     except Exception as e:
-        print(f"[-] Lỗi AI: {str(e)}")
+        print(f"[-] Lỗi AI Chi Tiết: {str(e)}")
         await update.message.reply_text("Shop đang bận một chút, bác vui lòng nhắn Zalo 0968.862.84 để được hỗ trợ ngay nhé!")
 
 if __name__ == "__main__":
+    print("==========================================")
+    print("    BOT AI DVT SHOP ĐÃ BẬT - SẴN SÀNG!    ")
+    print("==========================================")
+    
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.run_polling(drop_pending_updates=True)
