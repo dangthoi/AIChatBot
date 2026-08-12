@@ -25,7 +25,7 @@ Thread(target=run_web, daemon=True).start()
 # ⚙️ CẤU HÌNH KEY (DÁN API KEY MỚI VÀO ĐÂY)
 # ==========================================================
 TELEGRAM_BOT_TOKEN = "8710398772:AAGMzDrXh1ZH5FjjTUy9gSPtBm52zyYFcug"
-GEMINI_API_KEY = "AQ.Ab8RN6IsKEuJs9km40SKMFTxPAG26hYEbvCyU_pjCKexC28XaQ"
+GEMINI_API_KEY = "AQ.Ab8RN6LsUpjnrZxkTRZQlzeInRbUL6X_4cQ45qZzfgsH-6u7EA"
 
 SYSTEM_PROMPT = """
 Bạn là Trợ lý AI bán hàng và hỗ trợ kỹ thuật thông minh của cửa hàng DVTShop (DVT Shop HCM).
